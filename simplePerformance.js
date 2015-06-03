@@ -2,6 +2,14 @@ var Performance = function() {
     var pub = {};
     var pri = {};   
     
+    //If we are running in some modern browsers we can test with performance.now() otherwise use node.js perf lib (npm install performance-now)
+    if (typeof performance != "undefined") {
+    	pri.perfFunction = performance.now;
+    } else {
+    	var now = require("performance-now");
+    	pri.perfFunction = now;
+    }
+    
     pub.monitors = {};
     
     pub.wrap = function(name, fxn) {
@@ -16,7 +24,7 @@ var Performance = function() {
     	if (typeof pub.monitors[name] == "undefined") pub.monitors[name] = {};
     	
     	//Start log
-    	pub.monitors[name].lastStart = performance.now();
+    	pub.monitors[name].lastStart = pri.perfFunction();
     }
     
     pri.endMonitor = function(name) {
@@ -26,7 +34,7 @@ var Performance = function() {
     	if (typeof mon.times == "undefined") mon.times = [];
     	
     	//End log
-    	var lastTime = performance.now() - mon.lastStart;
+    	var lastTime = pri.perfFunction() - mon.lastStart;
     	mon.times.push(lastTime);
     	pri.calculateMonitor(mon);
     	
@@ -40,10 +48,20 @@ var Performance = function() {
     	}
     }
     
+    pri.mean = function(elmt) {
+    	var sum = 0;
+		for( var i = 0, l = elmt.length; i<l; i++ ){
+		    sum += elmt[i];
+		}
+		
+		return sum/elmt.length;
+    }
+    
     pri.calculateMonitor = function(mon){
-		mon.avg = d3.mean(mon.times, function(d){return d*1;})*1000;
-		mon.min = d3.min(mon.times, function(d){return d*1;})*1000;
-		mon.max = d3.max(mon.times, function(d){return d*1;})*1000;
+		mon.avg = pri.mean(mon.times)*1000;
+		mon.min = Math.min.apply(null,mon.times)*1000;
+		mon.max = Math.max.apply(null,mon.times)*1000;
+		console.log(mon.times);
 		mon.sway = Math.round(((mon.max-mon.min)/mon.avg)*100);	
 		var lastTime = mon.times[mon.times.length-1]*1000;
 		mon.lastSway = Math.round(((lastTime-mon.min)/mon.avg)*100);	
